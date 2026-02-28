@@ -25,5 +25,5 @@ This repo provisions:
 cd infra
 terraform init
 terraform apply -auto-approve \
-  -var "email=YOUR_EMAIL" \
-  -var "repo_url=https://github.com/YOURUSER/aws-assessment"
+  -var "email=shahid.aslam1786@gmail.com" \
+  -var "repo_url=https://github.com/shahid8005/aws-assessment"
