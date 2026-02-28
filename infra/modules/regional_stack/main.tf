@@ -267,6 +267,7 @@ resource "aws_iam_role_policy" "lambda_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      { Effect = "Allow", Action = ["xray:PutTraceSegments", "xray:PutTelemetryRecords"], Resource = "*" },
       { Effect = "Allow", Action = ["dynamodb:PutItem"], Resource = aws_dynamodb_table.logs.arn },
       { Effect = "Allow", Action = ["sns:Publish"], Resource = var.sns_topic_arn },
       { Effect = "Allow", Action = ["ecs:RunTask"], Resource = aws_ecs_task_definition.task.arn },
@@ -290,6 +291,10 @@ resource "aws_lambda_function" "greeter" {
   runtime       = "python3.12"
   filename      = data.archive_file.greeter_zip.output_path
 
+  tracing_config {
+    mode = "Active"
+  }
+
   environment {
     variables = {
       TABLE_NAME  = aws_dynamodb_table.logs.name
@@ -308,6 +313,9 @@ resource "aws_lambda_function" "dispatcher" {
   runtime       = "python3.12"
   filename      = data.archive_file.dispatcher_zip.output_path
 
+  tracing_config {
+    mode = "Active"
+  }
   environment {
     variables = {
       CLUSTER_ARN  = aws_ecs_cluster.cluster.arn
