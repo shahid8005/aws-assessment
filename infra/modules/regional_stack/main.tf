@@ -42,6 +42,7 @@ resource "aws_kms_key" "ddb" {
   enable_key_rotation = true
 }
 # ---------- DynamoDB ----------
+# ---------- DynamoDB ----------
 resource "aws_dynamodb_table" "logs" {
   name         = "${var.project}-GreetingLogs-${var.region}"
   billing_mode = "PAY_PER_REQUEST"
@@ -52,20 +53,21 @@ resource "aws_dynamodb_table" "logs" {
     name = "pk"
     type = "S"
   }
+
   attribute {
     name = "sk"
     type = "S"
   }
-}
-server_side_encryption {
-  enabled     = true
-  kms_key_arn = aws_kms_key.ddb.arn
-}
 
-point_in_time_recovery {
-  enabled = true
-}
+  server_side_encryption {
+    enabled     = true
+    kms_key_arn = aws_kms_key.ddb.arn
+  }
 
+  point_in_time_recovery {
+    enabled = true
+  }
+}
 # ---------- Networking (public-only to avoid NAT) ----------
 resource "aws_vpc" "vpc" {
   cidr_block           = "10.${substr(replace(var.region, "-", ""), 0, 1)}.0.0/16"
