@@ -1,0 +1,48 @@
+name: deploy
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init (no backend)
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Security scan (Checkov)
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infra
+          framework: terraform
+          quiet: true
+          soft_fail: true
+
+      - name: Terraform plan (placeholder)
+        run: |
+          echo "Plan step would run here with AWS creds configured in CI"
+          # terraform init
+          # terraform plan -out=tfplan
+
+      - name: Test execution placeholder
+        run: |
+          echo "After apply, we'd run: python scripts/test_deployment.py ..."
