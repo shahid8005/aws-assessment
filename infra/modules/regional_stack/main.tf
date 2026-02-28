@@ -7,8 +7,14 @@ resource "aws_dynamodb_table" "logs" {
   hash_key     = "pk"
   range_key    = "sk"
 
-  attribute { name = "pk" type = "S" }
-  attribute { name = "sk" type = "S" }
+  attribute { 
+    name = "pk" 
+    type = "S" 
+}
+  attribute { 
+    name = "sk" 
+    type = "S" 
+}
 }
 
 # ---------- Networking (public-only to avoid NAT) ----------
@@ -83,7 +89,10 @@ resource "aws_cloudwatch_log_group" "ecs" {
 data "aws_iam_policy_document" "ecs_task_assume" {
   statement {
     actions = ["sts:AssumeRole"]
-    principals { type = "Service" identifiers = ["ecs-tasks.amazonaws.com"] }
+    principals { 
+      type = "Service" 
+      identifiers = ["ecs-tasks.amazonaws.com"] 
+}
   }
 }
 
