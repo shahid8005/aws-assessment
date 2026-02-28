@@ -7,14 +7,14 @@ resource "aws_dynamodb_table" "logs" {
   hash_key     = "pk"
   range_key    = "sk"
 
-  attribute { 
-    name = "pk" 
-    type = "S" 
-}
-  attribute { 
-    name = "sk" 
-    type = "S" 
-}
+  attribute {
+    name = "pk"
+    type = "S"
+  }
+  attribute {
+    name = "sk"
+    type = "S"
+  }
 }
 
 # ---------- Networking (public-only to avoid NAT) ----------
@@ -22,7 +22,7 @@ resource "aws_vpc" "vpc" {
   cidr_block           = "10.${substr(replace(var.region, "-", ""), 0, 1)}.0.0/16"
   enable_dns_hostnames = true
   enable_dns_support   = true
-  tags = { Name = "${var.project}-vpc-${var.region}" }
+  tags                 = { Name = "${var.project}-vpc-${var.region}" }
 }
 
 resource "aws_internet_gateway" "igw" {
@@ -89,10 +89,10 @@ resource "aws_cloudwatch_log_group" "ecs" {
 data "aws_iam_policy_document" "ecs_task_assume" {
   statement {
     actions = ["sts:AssumeRole"]
-    principals { 
-      type = "Service" 
-      identifiers = ["ecs-tasks.amazonaws.com"] 
-}
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
+    }
   }
 }
 
@@ -108,8 +108,8 @@ resource "aws_iam_role_policy" "ecs_task_policy" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      { Effect="Allow", Action=["sns:Publish"], Resource=var.sns_topic_arn },
-      { Effect="Allow", Action=["logs:CreateLogStream","logs:PutLogEvents"], Resource="*" }
+      { Effect = "Allow", Action = ["sns:Publish"], Resource = var.sns_topic_arn },
+      { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "*" }
     ]
   })
 }
@@ -121,7 +121,7 @@ resource "aws_iam_role" "ecs_exec_role" {
 
 resource "aws_iam_role_policy_attachment" "ecs_exec_attach" {
   role       = aws_iam_role.ecs_exec_role.name
-  policy_arn  = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
 locals {
@@ -144,18 +144,18 @@ resource "aws_ecs_task_definition" "task" {
 
   container_definitions = jsonencode([
     {
-      name  = "publisher"
-      image = "amazon/aws-cli:2.15.39"
+      name      = "publisher"
+      image     = "amazon/aws-cli:2.15.39"
       essential = true
       environment = [
-        { name="SNS_TOPIC_ARN", value=var.sns_topic_arn },
-        { name="MESSAGE", value=local.ecs_message }
+        { name = "SNS_TOPIC_ARN", value = var.sns_topic_arn },
+        { name = "MESSAGE", value = local.ecs_message }
       ]
       command = [
-        "sns","publish",
-        "--topic-arn","$SNS_TOPIC_ARN",
-        "--message","$MESSAGE",
-        "--region","us-east-1"
+        "sns", "publish",
+        "--topic-arn", "$SNS_TOPIC_ARN",
+        "--message", "$MESSAGE",
+        "--region", "us-east-1"
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -185,10 +185,10 @@ data "archive_file" "dispatcher_zip" {
 data "aws_iam_policy_document" "lambda_assume" {
   statement {
     actions = ["sts:AssumeRole"]
-    principals { 
-      type="Service" 
-      identifiers=["lambda.amazonaws.com"] 
-}
+    principals {
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
+    }
   }
 }
 
@@ -202,13 +202,13 @@ resource "aws_iam_role_policy" "lambda_policy" {
   role = aws_iam_role.lambda_role.id
 
   policy = jsonencode({
-    Version="2012-10-17"
-    Statement=[
-      { Effect="Allow", Action=["dynamodb:PutItem"], Resource=aws_dynamodb_table.logs.arn },
-      { Effect="Allow", Action=["sns:Publish"], Resource=var.sns_topic_arn },
-      { Effect="Allow", Action=["ecs:RunTask"], Resource=aws_ecs_task_definition.task.arn },
-      { Effect="Allow", Action=["iam:PassRole"], Resource=[aws_iam_role.ecs_exec_role.arn, aws_iam_role.ecs_task_role.arn] },
-      { Effect="Allow", Action=["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents"], Resource="*" }
+    Version = "2012-10-17"
+    Statement = [
+      { Effect = "Allow", Action = ["dynamodb:PutItem"], Resource = aws_dynamodb_table.logs.arn },
+      { Effect = "Allow", Action = ["sns:Publish"], Resource = var.sns_topic_arn },
+      { Effect = "Allow", Action = ["ecs:RunTask"], Resource = aws_ecs_task_definition.task.arn },
+      { Effect = "Allow", Action = ["iam:PassRole"], Resource = [aws_iam_role.ecs_exec_role.arn, aws_iam_role.ecs_task_role.arn] },
+      { Effect = "Allow", Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"], Resource = "*" }
     ]
   })
 }
