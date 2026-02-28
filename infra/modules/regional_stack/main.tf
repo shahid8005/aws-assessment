@@ -172,7 +172,7 @@ resource "aws_iam_role_policy" "ecs_task_policy" {
     Version = "2012-10-17"
     Statement = [
       { Effect = "Allow", Action = ["sns:Publish"], Resource = var.sns_topic_arn },
-      { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "*" }
+      { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "${aws_cloudwatch_log_group.ecs.arn}:*" }
     ]
   })
 }
@@ -271,7 +271,14 @@ resource "aws_iam_role_policy" "lambda_policy" {
       { Effect = "Allow", Action = ["sns:Publish"], Resource = var.sns_topic_arn },
       { Effect = "Allow", Action = ["ecs:RunTask"], Resource = aws_ecs_task_definition.task.arn },
       { Effect = "Allow", Action = ["iam:PassRole"], Resource = [aws_iam_role.ecs_exec_role.arn, aws_iam_role.ecs_task_role.arn] },
-      { Effect = "Allow", Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"], Resource = "*" }
+      {
+        Effect = "Allow",
+        Action = ["logs:CreateLogStream", "logs:PutLogEvents"],
+        Resource = [
+          "${aws_cloudwatch_log_group.greeter.arn}:*",
+          "${aws_cloudwatch_log_group.dispatcher.arn}:*"
+        ]
+      }
     ]
   })
 }
