@@ -1,5 +1,46 @@
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
 data "aws_caller_identity" "me" {}
+data "aws_iam_policy_document" "kms_logs" {
+  statement {
+    sid     = "AllowAccountAdmin"
+    effect  = "Allow"
+    actions = ["kms:*"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"]
+    }
+    resources = ["*"]
+  }
 
+  statement {
+    sid    = "AllowCloudWatchLogsUseKey"
+    effect = "Allow"
+    actions = [
+      "kms:Encrypt",
+      "kms:Decrypt",
+      "kms:ReEncrypt*",
+      "kms:GenerateDataKey*",
+      "kms:DescribeKey"
+    ]
+    principals {
+      type        = "Service"
+      identifiers = ["logs.${data.aws_region.current.name}.amazonaws.com"]
+    }
+    resources = ["*"]
+  }
+}
+
+resource "aws_kms_key" "cw_logs" {
+  description         = "KMS for CloudWatch Logs ${var.project} ${var.region}"
+  enable_key_rotation = true
+  policy              = data.aws_iam_policy_document.kms_logs.json
+}
+
+resource "aws_kms_key" "ddb" {
+  description         = "KMS for DynamoDB ${var.project} ${var.region}"
+  enable_key_rotation = true
+}
 # ---------- DynamoDB ----------
 resource "aws_dynamodb_table" "logs" {
   name         = "${var.project}-GreetingLogs-${var.region}"
@@ -15,6 +56,14 @@ resource "aws_dynamodb_table" "logs" {
     name = "sk"
     type = "S"
   }
+}
+server_side_encryption {
+  enabled     = true
+  kms_key_arn = aws_kms_key.ddb.arn
+}
+
+point_in_time_recovery {
+  enabled = true
 }
 
 # ---------- Networking (public-only to avoid NAT) ----------
@@ -35,14 +84,14 @@ resource "aws_subnet" "public_a" {
   vpc_id                  = aws_vpc.vpc.id
   cidr_block              = "10.${substr(replace(var.region, "-", ""), 0, 1)}.1.0/24"
   availability_zone       = data.aws_availability_zones.azs.names[0]
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
 }
 
 resource "aws_subnet" "public_b" {
   vpc_id                  = aws_vpc.vpc.id
   cidr_block              = "10.${substr(replace(var.region, "-", ""), 0, 1)}.2.0/24"
   availability_zone       = data.aws_availability_zones.azs.names[1]
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = false
 }
 
 resource "aws_route_table" "public" {
@@ -68,10 +117,17 @@ resource "aws_security_group" "fargate_sg" {
   description = "Fargate outbound only"
   vpc_id      = aws_vpc.vpc.id
 
+  #egress {
+  #from_port   = 0
+  #to_port     = 0
+  # protocol    = "-1"
+  #  cidr_blocks = ["0.0.0.0/0"]
+  # }
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "Allow HTTPS outbound only"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
@@ -79,11 +135,16 @@ resource "aws_security_group" "fargate_sg" {
 # ---------- ECS ----------
 resource "aws_ecs_cluster" "cluster" {
   name = "${var.project}-cluster-${var.region}"
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
 }
 
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project}-${var.region}"
-  retention_in_days = 7
+  retention_in_days = 365
+  kms_key_id        = aws_kms_key.cw_logs.arn
 }
 
 data "aws_iam_policy_document" "ecs_task_assume" {
