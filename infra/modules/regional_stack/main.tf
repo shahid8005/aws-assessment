@@ -25,7 +25,7 @@ data "aws_iam_policy_document" "kms_logs" {
     ]
     principals {
       type        = "Service"
-      identifiers = ["logs.${data.aws_region.current.name}.amazonaws.com"]
+      identifiers = ["logs.${data.aws_region.current.id}.amazonaws.com"]
     }
     resources = ["*"]
   }
@@ -319,6 +319,17 @@ resource "aws_lambda_function" "dispatcher" {
   }
 }
 
+resource "aws_cloudwatch_log_group" "greeter" {
+  name              = "/aws/lambda/${aws_lambda_function.greeter.function_name}"
+  retention_in_days = 365
+  kms_key_id        = aws_kms_key.cw_logs.arn
+}
+
+resource "aws_cloudwatch_log_group" "dispatcher" {
+  name              = "/aws/lambda/${aws_lambda_function.dispatcher.function_name}"
+  retention_in_days = 365
+  kms_key_id        = aws_kms_key.cw_logs.arn
+}
 # ---------- API Gateway (HTTP API) + Cognito JWT authorizer ----------
 resource "aws_apigatewayv2_api" "api" {
   name          = "${var.project}-api-${var.region}"
